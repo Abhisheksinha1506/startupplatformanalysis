@@ -9,8 +9,11 @@ con.execute("CREATE OR REPLACE TABLE bl AS SELECT * FROM 'betalist_all.jsonl'")
 
 os.makedirs("charts", exist_ok=True)
 def save(fig, name):
-    fig.write_image(f"charts/{name}.png", width=1300, height=750, scale=2)
-    print(f"Saved charts/{name}.png")
+    try:
+        fig.write_image(f"charts/{name}.png", width=1300, height=750, scale=2)
+        print(f"Saved charts/{name}.png")
+    except Exception as e:
+        print(f"Error saving {name}.png: {e}")
 
 print("Generating 20 nuclear-level charts...")
 
@@ -149,9 +152,13 @@ HAVING COUNT(*) >= 50
 ORDER BY avg_waitlist DESC 
 LIMIT 15
 """).df()
-fig = px.bar(df, x='category', y='avg_waitlist', title="Category Performance (Avg Waitlist)")
-fig.update_xaxes(tickangle=45)
-save(fig, "10_category_performance")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='category', y='avg_waitlist', title="Category Performance (Avg Waitlist)")
+    fig.update_xaxes(tickangle=45)
+    fig.update_layout(xaxis_title="Category", yaxis_title="Average Waitlist Size")
+    save(fig, "10_category_performance")
+else:
+    print("Skipping chart 10: Insufficient category data")
 
 # 11. Tagline length vs waitlist correlation
 df = con.execute("""
@@ -222,7 +229,8 @@ save(fig, "13_waitlist_percentiles")
 df = con.execute("""
 SELECT 
     cat as category,
-    AVG(waitlist) as avg_waitlist
+    AVG(waitlist) as avg_waitlist,
+    COUNT(*) as count
 FROM bl, UNNEST(categories) as cat
 WHERE categories IS NOT NULL AND array_length(categories) > 0
 GROUP BY 1 
@@ -230,10 +238,14 @@ HAVING COUNT(*) >= 30
 ORDER BY avg_waitlist DESC 
 LIMIT 20
 """).df()
-fig = px.bar(df, y='category', x='avg_waitlist', orientation='h', 
-             title="Top 20 Categories by Average Waitlist")
-fig.update_yaxes(autorange="reversed")
-save(fig, "14_category_waitlist_avg")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, y='category', x='avg_waitlist', orientation='h', 
+                 title="Top 20 Categories by Average Waitlist")
+    fig.update_yaxes(autorange="reversed")
+    fig.update_layout(yaxis_title="Category", xaxis_title="Average Waitlist Size")
+    save(fig, "14_category_waitlist_avg")
+else:
+    print("Skipping chart 14: Insufficient category data")
 
 # 15. Top founders by total waitlist
 df = con.execute("""

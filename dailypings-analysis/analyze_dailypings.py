@@ -64,8 +64,11 @@ con.execute("CREATE OR REPLACE TABLE pings AS SELECT * FROM df")
 
 os.makedirs("charts", exist_ok=True)
 def save(fig, name):
-    fig.write_image(f"charts/{name}.png", width=1200, height=700, scale=2)
-    print(f"Saved charts/{name}.png")
+    try:
+        fig.write_image(f"charts/{name}.png", width=1200, height=700, scale=2)
+        print(f"Saved charts/{name}.png")
+    except Exception as e:
+        print(f"Error saving {name}.png: {e}")
 
 print("Generating 12 viral charts...")
 
@@ -82,10 +85,15 @@ else:
     print("Skipping chart 01: No date data available")
 
 # 2. Most upvoted pings ever
-df = con.execute("SELECT title, author, upvotes, url FROM pings ORDER BY upvotes DESC LIMIT 15").df()
-fig = px.bar(df, y='title', x='upvotes', orientation='h', title="Top 15 Most Upvoted Pings Ever")
-fig.update_yaxes(autorange="reversed")
-save(fig, "02_most_upvoted")
+df = con.execute("SELECT title, author, upvotes, url FROM pings WHERE upvotes > 0 ORDER BY upvotes DESC LIMIT 15").df()
+if not df.empty and len(df) > 0:
+    # Truncate long titles
+    df['title_short'] = df['title'].apply(lambda x: x[:50] + '...' if len(str(x)) > 50 else x)
+    fig = px.bar(df, y='title_short', x='upvotes', orientation='h', title="Top 15 Most Upvoted Pings Ever")
+    fig.update_yaxes(autorange="reversed")
+    save(fig, "02_most_upvoted")
+else:
+    print("Skipping chart 02: No upvote data available")
 
 # 3. Best day to post
 df = con.execute("""
@@ -106,16 +114,20 @@ else:
 df = con.execute("""
 WITH words AS (
   SELECT UNNEST(regexp_split_to_array(LOWER(title), '\\W+')) as word, upvotes
-  FROM pings WHERE upvotes > 5
+  FROM pings WHERE upvotes > 5 AND title IS NOT NULL
 )
 SELECT word, COUNT(*) as freq, AVG(upvotes) as avg
 FROM words 
-WHERE LENGTH(word) > 4 AND word NOT IN ('with','from','this','just','your')
+WHERE LENGTH(word) > 4 AND word NOT IN ('with','from','this','just','your','that','have','will','make','more','most','best','first')
 GROUP BY word HAVING COUNT(*) >= 5
 ORDER BY avg DESC LIMIT 25
 """).df()
-fig = px.bar(df, x='word', y='avg', title="Title Words That Get The Most Upvotes")
-save(fig, "04_magic_words")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='word', y='avg', title="Title Words That Get The Most Upvotes")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "04_magic_words")
+else:
+    print("Skipping chart 04: Insufficient word data")
 
 # 5. Top authors by total upvotes
 df = con.execute("""
@@ -212,10 +224,15 @@ fig = px.bar(df, x='upvote_range', y='count', title="Distribution of Upvotes Acr
 save(fig, "10_upvote_distribution")
 
 # 11. Most discussed pings (by comments)
-df = con.execute("SELECT title, author, comments, upvotes, url FROM pings ORDER BY comments DESC LIMIT 15").df()
-fig = px.bar(df, y='title', x='comments', orientation='h', title="Top 15 Most Discussed Pings (by Comments)")
-fig.update_yaxes(autorange="reversed")
-save(fig, "11_most_discussed")
+df = con.execute("SELECT title, author, comments, upvotes, url FROM pings WHERE comments > 0 ORDER BY comments DESC LIMIT 15").df()
+if not df.empty and len(df) > 0:
+    # Truncate long titles
+    df['title_short'] = df['title'].apply(lambda x: x[:50] + '...' if len(str(x)) > 50 else x)
+    fig = px.bar(df, y='title_short', x='comments', orientation='h', title="Top 15 Most Discussed Pings (by Comments)")
+    fig.update_yaxes(autorange="reversed")
+    save(fig, "11_most_discussed")
+else:
+    print("Skipping chart 11: No comment data available")
 
 # 12. Title length vs engagement
 df = con.execute("""

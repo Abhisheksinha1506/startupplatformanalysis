@@ -10,8 +10,11 @@ con.execute("CREATE OR REPLACE TABLE devhunt AS SELECT * FROM 'devhunt_all.jsonl
 
 os.makedirs("charts", exist_ok=True)
 def save(fig, name):
-    fig.write_image(f"charts/{name}.png", width=1200, height=700, scale=2)
-    print(f"✓ {name}.png")
+    try:
+        fig.write_image(f"charts/{name}.png", width=1200, height=700, scale=2)
+        print(f"✓ {name}.png")
+    except Exception as e:
+        print(f"Error saving {name}.png: {e}")
 
 print("Generating 15+ viral charts...")
 
@@ -21,10 +24,14 @@ print(f"Total tools in database: {total['total'].iloc[0]:,}")
 
 # 2. Top 20 tools by impressions
 df = con.execute("SELECT title, impressions, url FROM devhunt WHERE impressions > 0 ORDER BY impressions DESC LIMIT 20").df()
-if not df.empty:
-    fig = px.bar(df, y='title', x='impressions', orientation='h', title="Top 20 Dev Tools by Impressions on DevHunt")
+if not df.empty and len(df) > 0:
+    # Truncate long titles
+    df['title_short'] = df['title'].apply(lambda x: x[:50] + '...' if len(str(x)) > 50 else x)
+    fig = px.bar(df, y='title_short', x='impressions', orientation='h', title="Top 20 Dev Tools by Impressions on DevHunt")
     fig.update_yaxes(autorange="reversed")
     save(fig, "01_top_tools_by_impressions")
+else:
+    print("Skipping chart 01: No impressions data available")
 
 # 3. Growth over time (by scraped_at date)
 df = con.execute("""
@@ -55,18 +62,20 @@ if not df.empty:
 df = con.execute("""
 WITH words AS (
   SELECT UNNEST(regexp_split_to_array(LOWER(title), '\\W+')) as word, impressions
-  FROM devhunt WHERE impressions > 0
+  FROM devhunt WHERE impressions > 0 AND title IS NOT NULL
 )
 SELECT word, COUNT(*) as freq, AVG(impressions) as avg_impressions
 FROM words 
-WHERE LENGTH(word) > 4 AND word NOT IN ('with','your','from','this','that','just','into','tools','tool','dev','api')
+WHERE LENGTH(word) > 4 AND word NOT IN ('with','your','from','this','that','just','into','tools','tool','dev','api','have','will','make','more','most','best','first')
 GROUP BY word HAVING COUNT(*) >= 5
 ORDER BY avg_impressions DESC LIMIT 30
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     fig = px.bar(df, x='word', y='avg_impressions', title="Title Words That Get the Most Impressions on DevHunt")
     fig.update_xaxes(tickangle=45)
     save(fig, "04_magic_words")
+else:
+    print("Skipping chart 04: Insufficient word data")
 
 # 6. Tools with highest impressions
 df = con.execute("""

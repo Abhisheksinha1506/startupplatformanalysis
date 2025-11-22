@@ -9,8 +9,11 @@ con.execute("CREATE OR REPLACE TABLE tools AS SELECT * FROM 'listyourtool_all.js
 
 os.makedirs("charts", exist_ok=True)
 def save(fig, name):
-    fig.write_image(f"charts/{name}.png", width=1200, height=700, scale=2)
-    print(f"Saved charts/{name}.png")
+    try:
+        fig.write_image(f"charts/{name}.png", width=1200, height=700, scale=2)
+        print(f"Saved charts/{name}.png")
+    except Exception as e:
+        print(f"Error saving {name}.png: {e}")
 
 print("Generating 16 spicy AI-tool charts...")
 
@@ -20,10 +23,15 @@ fig = px.bar(df, x='month', y='tools', title="Monthly AI Tool Submissions on Lis
 save(fig, "01_monthly_explosion")
 
 # 2. Top 20 most upvoted AI tools ever
-df = con.execute("SELECT title, maker, upvotes FROM tools ORDER BY upvotes DESC LIMIT 20").df()
-fig = px.bar(df, y='title', x='upvotes', orientation='h', title="Top 20 Most Upvoted AI Tools")
-fig.update_yaxes(autorange="reversed")
-save(fig, "02_top_tools")
+df = con.execute("SELECT title, maker, upvotes FROM tools WHERE upvotes > 0 ORDER BY upvotes DESC LIMIT 20").df()
+if not df.empty and len(df) > 0:
+    # Truncate long titles
+    df['title_short'] = df['title'].apply(lambda x: x[:50] + '...' if len(str(x)) > 50 else x)
+    fig = px.bar(df, y='title_short', x='upvotes', orientation='h', title="Top 20 Most Upvoted AI Tools")
+    fig.update_yaxes(autorange="reversed")
+    save(fig, "02_top_tools")
+else:
+    print("Skipping chart 02: No upvote data available")
 
 # 3. Most saturated categories
 df = con.execute("SELECT category, COUNT(*) as count FROM tools GROUP BY category ORDER BY count DESC LIMIT 20").df()
@@ -40,17 +48,20 @@ save(fig, "04_pricing_pie")
 df = con.execute("""
 WITH words AS (
   SELECT UNNEST(regexp_split_to_array(LOWER(title || ' ' || tagline), '\\W+')) as word, upvotes
-  FROM tools WHERE upvotes > 10
+  FROM tools WHERE upvotes > 10 AND (title IS NOT NULL OR tagline IS NOT NULL)
 )
 SELECT word, COUNT(*) as freq, AVG(upvotes) as avg_upvotes
 FROM words 
-WHERE LENGTH(word) > 4 AND word NOT IN ('with','your','from','this','just','that','into','over','tool')
+WHERE LENGTH(word) > 4 AND word NOT IN ('with','your','from','this','just','that','into','over','tool','have','will','make','more','most','best','first')
 GROUP BY word HAVING COUNT(*) >= 10
 ORDER BY avg_upvotes DESC LIMIT 30
 """).df()
-fig = px.bar(df, x='word', y='avg_upvotes', title="Words That Get The Most Upvotes in AI Tool Names")
-fig.update_xaxes(tickangle=45)
-save(fig, "05_magic_words")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='word', y='avg_upvotes', title="Words That Get The Most Upvotes in AI Tool Names")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "05_magic_words")
+else:
+    print("Skipping chart 05: Insufficient word data")
 
 # 6. Upvotes vs category correlation
 df = con.execute("""
