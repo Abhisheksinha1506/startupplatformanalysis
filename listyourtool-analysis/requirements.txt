@@ -1,0 +1,8 @@
+requests
+beautifulsoup4
+duckdb
+pandas
+plotly
+kaleido
+playwright
+
