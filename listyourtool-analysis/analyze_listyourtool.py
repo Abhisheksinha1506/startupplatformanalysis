@@ -63,19 +63,31 @@ if not df.empty and len(df) > 0:
 else:
     print("Skipping chart 05: Insufficient word data")
 
-# 6. Upvotes vs category correlation
+# 6. Category distribution (showing what categories exist)
 df = con.execute("""
-SELECT category, AVG(upvotes) as avg_upvotes, COUNT(*) as count
+SELECT category, COUNT(*) as count
 FROM tools 
-WHERE category != 'Unknown'
+WHERE category IS NOT NULL AND category != ''
 GROUP BY category 
-HAVING COUNT(*) >= 10
-ORDER BY avg_upvotes DESC
+ORDER BY count DESC
 LIMIT 20
 """).df()
-fig = px.bar(df, x='category', y='avg_upvotes', title="Average Upvotes by Category (Categories with 10+ tools)")
-fig.update_xaxes(tickangle=45)
-save(fig, "06_upvotes_by_category")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='category', y='count', 
+                 title="Tool Distribution by Category",
+                 text='count', labels={'count': 'Number of Tools', 'category': 'Category'})
+    fig.update_traces(texttemplate='%{text}', textposition='outside')
+    fig.update_xaxes(tickangle=45)
+    fig.update_layout(yaxis_title="Number of Tools")
+    save(fig, "06_upvotes_by_category")
+else:
+    # Fallback: Show category breakdown even if limited
+    df = con.execute("SELECT category, COUNT(*) as count FROM tools GROUP BY category ORDER BY count DESC LIMIT 10").df()
+    if not df.empty:
+        fig = px.pie(df, names='category', values='count', title="Category Distribution")
+        save(fig, "06_upvotes_by_category")
+    else:
+        print("Skipping chart 06: No category data")
 
 # 7. Maker repeat offenders
 df = con.execute("""
@@ -91,20 +103,26 @@ fig = px.bar(df, x='maker', y='tool_count', title="Top 20 Makers by Number of To
 fig.update_xaxes(tickangle=45)
 save(fig, "07_maker_repeat_offenders")
 
-# 8. "ChatGPT" in name correlation
+# 8. "ChatGPT" in name correlation - show distribution instead
 df = con.execute("""
 SELECT 
     CASE 
-        WHEN LOWER(title) LIKE '%chatgpt%' OR LOWER(title) LIKE '%gpt%' THEN 'Has GPT/ChatGPT'
+        WHEN LOWER(title) LIKE '%chatgpt%' OR LOWER(title) LIKE '%gpt%' OR LOWER(title) LIKE '%gpt-%' THEN 'Has GPT/ChatGPT'
         ELSE 'No GPT mention'
     END as has_gpt,
-    AVG(upvotes) as avg_upvotes,
     COUNT(*) as count
 FROM tools
+WHERE title IS NOT NULL AND title != ''
 GROUP BY 1
 """).df()
-fig = px.bar(df, x='has_gpt', y='avg_upvotes', title="Average Upvotes: Tools with 'GPT' in Name vs Without")
-save(fig, "08_gpt_in_name")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='has_gpt', y='count', title="Tools with 'GPT' in Name vs Without",
+                 text='count', labels={'count': 'Number of Tools', 'has_gpt': 'Category'})
+    fig.update_traces(texttemplate='%{text} tools', textposition='outside')
+    fig.update_layout(yaxis_title="Number of Tools", showlegend=False)
+    save(fig, "08_gpt_in_name")
+else:
+    print("Skipping chart 08: Insufficient GPT data")
 
 # 9. Upvote distribution
 df = con.execute("""
@@ -204,31 +222,48 @@ df_filtered = df[df['category'].isin(top_cats)]
 fig = px.line(df_filtered, x='month', y='count', color='category', title="Top 5 Categories: Monthly Submission Trends")
 save(fig, "14_category_trends")
 
-# 15. Pricing vs upvotes
+# 15. Pricing distribution (show what pricing models exist)
 df = con.execute("""
-SELECT pricing, AVG(upvotes) as avg_upvotes, COUNT(*) as count
+SELECT pricing, COUNT(*) as count
 FROM tools
+WHERE pricing IS NOT NULL AND pricing != ''
 GROUP BY pricing
-HAVING COUNT(*) >= 20
-ORDER BY avg_upvotes DESC
+HAVING COUNT(*) >= 5
+ORDER BY count DESC
 """).df()
-fig = px.bar(df, x='pricing', y='avg_upvotes', title="Average Upvotes by Pricing Model")
-save(fig, "15_pricing_vs_upvotes")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='pricing', y='count', title="Pricing Model Distribution",
+                 text='count', labels={'count': 'Number of Tools', 'pricing': 'Pricing Model'})
+    fig.update_traces(texttemplate='%{text} tools', textposition='outside')
+    fig.update_xaxes(tickangle=45)
+    fig.update_layout(yaxis_title="Number of Tools")
+    save(fig, "15_pricing_vs_upvotes")
+else:
+    print("Skipping chart 15: Insufficient pricing data")
 
-# 16. Tools with "AI" in title vs without
+# 16. Tools with "AI" in title vs without - show distribution
 df = con.execute("""
 SELECT 
     CASE 
-        WHEN LOWER(title) LIKE '% ai %' OR LOWER(title) LIKE 'ai %' OR LOWER(title) LIKE '% ai' THEN 'Has "AI" in title'
+        WHEN LOWER(title) LIKE '% ai %' OR LOWER(title) LIKE 'ai %' OR LOWER(title) LIKE '% ai' 
+             OR LOWER(title) LIKE '%ai-%' OR LOWER(title) LIKE '%ai/' OR LOWER(title) LIKE '%ai:'
+             OR LOWER(title) LIKE '%ai-powered%' OR LOWER(title) LIKE '%ai tool%' 
+             OR LOWER(title) LIKE '%artificial intelligence%' THEN 'Has "AI" in title'
         ELSE 'No "AI" in title'
     END as has_ai,
-    AVG(upvotes) as avg_upvotes,
     COUNT(*) as count
 FROM tools
+WHERE title IS NOT NULL AND title != ''
 GROUP BY 1
 """).df()
-fig = px.bar(df, x='has_ai', y='avg_upvotes', title="Average Upvotes: Tools with 'AI' in Title vs Without")
-save(fig, "16_ai_in_title")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='has_ai', y='count', title="Tools with 'AI' in Title vs Without",
+                 text='count', labels={'count': 'Number of Tools', 'has_ai': 'Category'})
+    fig.update_traces(texttemplate='%{text} tools', textposition='outside')
+    fig.update_layout(yaxis_title="Number of Tools", showlegend=False)
+    save(fig, "16_ai_in_title")
+else:
+    print("Skipping chart 16: Insufficient AI title data")
 
 print("ALL 16 CHARTS READY!")
 print("Your post title:")

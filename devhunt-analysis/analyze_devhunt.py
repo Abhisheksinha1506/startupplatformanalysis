@@ -169,13 +169,24 @@ SELECT
         ELSE 'No Categories'
     END as has_categories,
     COUNT(*) as count,
-    AVG(impressions) as avg_impressions
+    AVG(impressions) as avg_impressions,
+    SUM(impressions) as total_impressions
 FROM devhunt
 GROUP BY 1
+HAVING COUNT(*) >= 10
 """).df()
-if not df.empty:
-    fig = px.bar(df, x='has_categories', y='avg_impressions', title="Average Impressions: Tools With vs Without Categories")
+if not df.empty and len(df) > 0 and df['avg_impressions'].sum() > 0:
+    fig = px.bar(df, x='has_categories', y='avg_impressions', 
+                 title="Average Impressions: Tools With vs Without Categories",
+                 text='count', labels={'avg_impressions': 'Average Impressions', 'has_categories': 'Category'})
+    fig.update_traces(texttemplate='%{text} tools', textposition='outside')
+    fig.update_layout(yaxis_title="Average Impressions", showlegend=False)
+    # Ensure y-axis shows meaningful range
+    min_val = df['avg_impressions'].min()
+    fig.update_layout(yaxis=dict(range=[max(0, min_val * 0.9), df['avg_impressions'].max() * 1.1]))
     save(fig, "10_categories_impact")
+else:
+    print("Skipping chart 10: Insufficient category comparison data")
 
 # 12. Tools with taglines vs without
 df = con.execute("""
@@ -185,13 +196,24 @@ SELECT
         ELSE 'No Tagline'
     END as has_tagline,
     COUNT(*) as count,
-    AVG(impressions) as avg_impressions
+    AVG(impressions) as avg_impressions,
+    SUM(impressions) as total_impressions
 FROM devhunt
 GROUP BY 1
+HAVING COUNT(*) >= 10
 """).df()
-if not df.empty:
-    fig = px.bar(df, x='has_tagline', y='avg_impressions', title="Average Impressions: Tools With vs Without Taglines")
+if not df.empty and len(df) > 0 and df['avg_impressions'].sum() > 0:
+    fig = px.bar(df, x='has_tagline', y='avg_impressions', 
+                 title="Average Impressions: Tools With vs Without Taglines",
+                 text='count', labels={'avg_impressions': 'Average Impressions', 'has_tagline': 'Category'})
+    fig.update_traces(texttemplate='%{text} tools', textposition='outside')
+    fig.update_layout(yaxis_title="Average Impressions", showlegend=False)
+    # Ensure y-axis shows meaningful range
+    min_val = df['avg_impressions'].min()
+    fig.update_layout(yaxis=dict(range=[max(0, min_val * 0.9), df['avg_impressions'].max() * 1.1]))
     save(fig, "11_tagline_impact")
+else:
+    print("Skipping chart 11: Insufficient tagline comparison data")
 
 print("\nALL CHARTS SAVED IN /charts!")
 print("Your post is ready. Title:")
