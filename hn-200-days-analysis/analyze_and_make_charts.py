@@ -197,9 +197,11 @@ def main() -> None:
             END
         """
     ).df()
-    if not df.empty:
+    if not df.empty and len(df) > 0:
         fig = px.bar(df, x='score_range', y='count', title="Story Score Distribution on Hacker News")
         save_figure(fig, "06_score_distribution")
+    else:
+        print("Skipping chart 06: No score data available")
 
     # 7. Top domains
     df = con.execute(
@@ -223,10 +225,12 @@ def main() -> None:
         LIMIT 10
         """
     ).df()
-    if not df.empty:
+    if not df.empty and len(df) > 0:
         fig = px.bar(df, x='domain', y='stories', title="Top 10 Domains by Story Count")
         fig.update_xaxes(tickangle=45)
         save_figure(fig, "07_top_domains")
+    else:
+        print("Skipping chart 07: No domain data available")
 
     # 8. Comments per story distribution
     df = con.execute(
@@ -255,9 +259,11 @@ def main() -> None:
             END
         """
     ).df()
-    if not df.empty:
+    if not df.empty and len(df) > 0:
         fig = px.bar(df, x='comment_range', y='count', title="Comments per Story Distribution")
         save_figure(fig, "08_comments_distribution")
+    else:
+        print("Skipping chart 08: No comment data available")
 
     # 9. Score vs Comments correlation
     df = con.execute(
@@ -286,11 +292,13 @@ def main() -> None:
         ORDER BY 1
         """
     ).df()
-    if not df.empty:
+    if not df.empty and len(df) > 0:
         day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
         df['day_name'] = df['day_of_week'].apply(lambda x: day_names[int(x)] if 0 <= x < 7 else 'Unknown')
         fig = px.bar(df, x='day_name', y='avg_score', title="Average Story Score by Day of Week")
         save_figure(fig, "10_best_day_of_week")
+    else:
+        print("Skipping chart 10: No time/score data available")
 
     print("ALL CHARTS SAVED IN /charts FOLDER!")
     print("You now have everything for a viral Reddit/blog post!")

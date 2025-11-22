@@ -48,6 +48,36 @@ Certain words in story titles correlate strongly with higher scores. Words longe
 
 The stories with the highest comment counts represent the most engaging discussions. These threads often feature technical debates, product launches, or controversial topics that spark extensive community dialogue.
 
+### Score Distribution
+
+![Score Distribution](./charts/06_score_distribution.png)
+
+The distribution of story scores reveals the competitive landscape on Hacker News. Most stories receive modest scores, while a small percentage achieve exceptional engagement.
+
+### Top Domains
+
+![Top Domains](./charts/07_top_domains.png)
+
+The most popular domains by story count reveal where the Hacker News community gets its content. GitHub, YouTube, and Medium are among the top sources.
+
+### Comments Distribution
+
+![Comments Distribution](./charts/08_comments_distribution.png)
+
+The distribution of comments per story shows engagement patterns. Most stories receive few comments, while highly discussed threads generate hundreds of responses.
+
+### Score vs Comments Correlation
+
+![Score vs Comments](./charts/09_score_vs_comments.png)
+
+The correlation between story scores and comment counts reveals engagement patterns. High-scoring stories often generate extensive discussion, though the relationship isn't always linear.
+
+### Best Day of Week
+
+![Best Day](./charts/10_best_day_of_week.png)
+
+Analysis of average story scores by day of week reveals optimal posting days. Certain days consistently show higher average scores, providing actionable insights for content creators.
+
 ## Key Insights
 
 - **Comment-to-Story Ratio**: Comments consistently outnumber stories, showing high community engagement
@@ -55,69 +85,5 @@ The stories with the highest comment counts represent the most engaging discussi
 - **Show HN Success**: Top Show HN submissions demonstrate what types of projects gain traction
 - **Title Impact**: Certain words and phrases in titles correlate with 2-3x higher average scores
 - **Discussion Depth**: Most discussed stories often have comment counts 10-50x higher than average
-
-## Data Structure
-
-Each record in `hn_html_part*.jsonl` follows this JSON structure:
-
-**Story record:**
-```json
-{
-  "type": "story",
-  "id": 12345678,
-  "title": "Example Story Title",
-  "by": "username",
-  "score": 42,
-  "time": 1700000000,
-  "url": "https://example.com",
-  "descendants": 15
-}
-```
-
-**Comment record:**
-```json
-{
-  "type": "comment",
-  "id": 12345679,
-  "text": "Comment text here...",
-  "by": "username",
-  "score": 5,
-  "time": 1700000100,
-  "parent": 12345678,
-  "kids": [12345680],
-  "deleted": false
-}
-```
-
-## Methodology
-
-**Scraping Approach:**
-- HTML-based scraping (no API access required)
-- Daily front page traversal for ~200 days
-- Full comment thread extraction for each story
-- Polite rate limiting with retry logic
-- Batch-based saving (10k records per file)
-
-**Analysis Approach:**
-- DuckDB for fast analytical queries on JSONL data
-- Type-based filtering (stories vs comments)
-- Time-series analysis for daily activity patterns
-- Text analysis for title word correlations
-- Show HN specific analysis
-- Comment tree analysis (using parent/kids relationships)
-
-**Chart Generation:**
-- Plotly for interactive-quality static PNGs
-- Consistent styling and color schemes
-- High-resolution output (1200×700, 2x scale)
-- Publication-ready format
-
-## Use Cases
-
-- **Content Creators**: Learn optimal posting times and what content performs best
-- **Makers**: Understand Show HN success patterns and engagement strategies
-- **Researchers**: Study tech community dynamics and discussion patterns
-- **Data Analysts**: Access comprehensive HN dataset for further analysis
-- **Community Managers**: Understand platform engagement patterns
 
 

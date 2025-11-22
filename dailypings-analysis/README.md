@@ -36,35 +36,17 @@ The top 15 most upvoted pings represent the most successful maker submissions. T
 
 Analysis of average upvotes by weekday reveals optimal posting days. Certain days of the week consistently show higher engagement rates, providing actionable insights for makers.
 
-### Magic Words in Titles
-
-![Magic Words](./charts/04_magic_words.png)
-
-Specific words in ping titles correlate strongly with higher upvote counts. Words that appear frequently in high-performing pings reveal what language and topics drive engagement.
-
 ### Top Authors
 
 ![Top Authors](./charts/05_top_authors.png)
 
 The most successful authors by total upvotes demonstrate consistent posting quality and community engagement. These makers have built strong followings through regular, high-quality submissions.
 
-### Engagement Patterns
-
-![Upvotes vs Comments](./charts/06_upvotes_vs_comments.png)
-
-The correlation between upvotes and comments reveals engagement patterns. Some pings generate discussion while others receive silent approval, showing different types of community response.
-
 ### Monthly Activity Trends
 
 ![Monthly Activity](./charts/07_monthly_activity.png)
 
 Monthly posting patterns show seasonal trends and platform growth cycles. Understanding these patterns helps predict optimal posting times.
-
-### Description Length Impact
-
-![Description Length](./charts/08_desc_length_vs_upvotes.png)
-
-Analysis of description length versus upvotes reveals optimal content length. There's a sweet spot for description length that maximizes engagement.
 
 ### Best Hour to Post
 
@@ -78,12 +60,6 @@ Time-of-day analysis shows when the community is most active and engaged. Postin
 
 The distribution of upvotes across all pings reveals the competitive landscape. Most pings receive modest engagement, while a small percentage achieve viral status.
 
-### Most Discussed Pings
-
-![Most Discussed](./charts/11_most_discussed.png)
-
-Pings with the highest comment counts represent the most engaging discussions. These often feature controversial topics, technical debates, or innovative products that spark conversation.
-
 ### Title Length Optimization
 
 ![Title Length](./charts/12_title_length_vs_upvotes.png)
@@ -94,56 +70,9 @@ Title length analysis shows optimal character counts for maximum engagement. Sho
 
 - **Growth Trajectory**: Platform shows steady growth with increasing daily submissions
 - **Optimal Posting Times**: Specific days and hours show 2-3x higher average upvotes
-- **Title Impact**: Certain words in titles correlate with significantly higher engagement
 - **Author Success**: Top authors demonstrate consistency and quality over quantity
-- **Engagement Patterns**: Upvotes and comments show different correlation patterns
-- **Content Length**: Optimal description and title lengths exist for maximum engagement
+- **Content Length**: Optimal title lengths exist for maximum engagement
 - **Viral Potential**: Small percentage of pings achieve exceptional engagement
-
-## Data Structure
-
-Each ping record in `dailypings_all.jsonl` follows this JSON structure:
-
-```json
-{
-  "id": "12345",
-  "title": "Shipped my first SaaS product",
-  "description": "After 3 months of work, I finally launched...",
-  "author": "maker123",
-  "upvotes": 42,
-  "comments": 8,
-  "date": "2024-11-15",
-  "url": "https://dailypings.com/ping/12345"
-}
-```
-
-## Methodology
-
-**Scraping Approach:**
-- Concurrent pagination through all ping listing pages
-- Respectful rate limiting (0.8s between batches)
-- Incremental saves every 30 seconds
-- Thread-safe duplicate prevention using ID-based tracking
-
-**Analysis Approach:**
-- DuckDB for fast analytical queries on JSONL data
-- Time-series analysis for growth and activity patterns
-- Text analysis for title/description optimization
-- Author performance tracking across multiple pings
-- Engagement correlation analysis (upvotes vs comments)
-
-**Chart Generation:**
-- Plotly for interactive-quality static PNGs
-- Consistent styling and color schemes
-- High-resolution output (1200×700, 2x scale)
-- Publication-ready format
-
-## Use Cases
-
-- **Makers**: Learn what gets engagement, optimize your posting strategy
-- **Community Managers**: Understand platform dynamics and user behavior
-- **Content Creators**: Use insights and charts for blog posts and social media
-- **Researchers**: Study maker community patterns and engagement dynamics
-- **Data Analysts**: Access clean, structured dataset for further analysis
+- **Monthly Patterns**: Clear seasonal trends and platform growth cycles
 
 

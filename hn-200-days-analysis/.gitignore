@@ -1,6 +1,5 @@
 .DS_Store
 *.jsonl
 *.zip
-charts/
 __pycache__/
 

@@ -33,17 +33,26 @@ if not df.empty and len(df) > 0:
 else:
     print("Skipping chart 01: No impressions data available")
 
-# 3. Growth over time (by scraped_at date)
+# 3. Growth over time (by impressions - cumulative)
 df = con.execute("""
-SELECT DATE(scraped_at::TIMESTAMP) as day, COUNT(*) as tools 
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY impressions DESC) as rank,
+    impressions
 FROM devhunt 
-WHERE scraped_at != '' 
-GROUP BY 1 
-ORDER BY 1
+WHERE impressions > 0
+ORDER BY impressions DESC
 """).df()
-if not df.empty:
-    fig = px.area(df, x='day', y='tools', title="DevHunt.org Tools Scraped Over Time")
+if not df.empty and len(df) > 0:
+    # Create cumulative count
+    df = df.sort_values('impressions', ascending=False).reset_index(drop=True)
+    df['cumulative_tools'] = range(1, len(df) + 1)
+    fig = px.line(df, x='cumulative_tools', y='impressions', 
+                  title="DevHunt.org Tools by Impressions (Ranked)")
+    fig.update_xaxes(title_text="Tool Rank (by Impressions)")
+    fig.update_yaxes(title_text="Impressions")
     save(fig, "02_scraping_timeline")
+else:
+    print("Skipping chart 02: No impressions data available")
 
 # 4. Most successful categories (by impressions)
 df = con.execute("""

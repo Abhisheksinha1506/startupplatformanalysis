@@ -139,14 +139,20 @@ HAVING COUNT(*) >= 2
 ORDER BY total_upvotes DESC
 LIMIT 20
 """).df()
-fig = px.bar(df, x='author', y='total_upvotes', title="Top 20 Authors by Total Upvotes")
-fig.update_xaxes(tickangle=45)
-save(fig, "05_top_authors")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='author', y='total_upvotes', title="Top 20 Authors by Total Upvotes")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "05_top_authors")
+else:
+    print("Skipping chart 05: No author data available")
 
 # 6. Upvotes vs Comments correlation
 df = con.execute("SELECT upvotes, comments FROM pings WHERE upvotes > 0 AND comments > 0").df()
-fig = px.scatter(df, x='upvotes', y='comments', title="Upvotes vs Comments Correlation", trendline="ols")
-save(fig, "06_upvotes_vs_comments")
+if not df.empty and len(df) > 10:
+    fig = px.scatter(df, x='upvotes', y='comments', title="Upvotes vs Comments Correlation", trendline="ols")
+    save(fig, "06_upvotes_vs_comments")
+else:
+    print("Skipping chart 06: Insufficient upvote/comment data")
 
 # 7. Monthly posting activity
 df = con.execute("""
@@ -172,12 +178,16 @@ SELECT
     AVG(upvotes) as avg_upvotes,
     AVG(comments) as avg_comments
 FROM pings
-WHERE description != ''
+WHERE description != '' AND upvotes > 0
 GROUP BY 1
+HAVING COUNT(*) >= 5
 ORDER BY 1
 """).df()
-fig = px.scatter(df, x='desc_length', y='avg_upvotes', title="Description Length vs Average Upvotes", trendline="ols")
-save(fig, "08_desc_length_vs_upvotes")
+if not df.empty and len(df) > 0:
+    fig = px.scatter(df, x='desc_length', y='avg_upvotes', title="Description Length vs Average Upvotes", trendline="ols")
+    save(fig, "08_desc_length_vs_upvotes")
+else:
+    print("Skipping chart 08: Insufficient description/upvote data")
 
 # 9. Hour of day analysis (if time data available)
 df = con.execute("""
@@ -220,8 +230,11 @@ ORDER BY
         ELSE 6
     END
 """).df()
-fig = px.bar(df, x='upvote_range', y='count', title="Distribution of Upvotes Across All Pings")
-save(fig, "10_upvote_distribution")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='upvote_range', y='count', title="Distribution of Upvotes Across All Pings")
+    save(fig, "10_upvote_distribution")
+else:
+    print("Skipping chart 10: No upvote data available")
 
 # 11. Most discussed pings (by comments)
 df = con.execute("SELECT title, author, comments, upvotes, url FROM pings WHERE comments > 0 ORDER BY comments DESC LIMIT 15").df()
@@ -241,11 +254,16 @@ SELECT
     AVG(upvotes) as avg_upvotes,
     AVG(comments) as avg_comments
 FROM pings
+WHERE title != '' AND upvotes > 0
 GROUP BY 1
+HAVING COUNT(*) >= 5
 ORDER BY 1
 """).df()
-fig = px.scatter(df, x='title_length', y='avg_upvotes', title="Title Length vs Average Upvotes", trendline="ols")
-save(fig, "12_title_length_vs_upvotes")
+if not df.empty and len(df) > 0:
+    fig = px.scatter(df, x='title_length', y='avg_upvotes', title="Title Length vs Average Upvotes", trendline="ols")
+    save(fig, "12_title_length_vs_upvotes")
+else:
+    print("Skipping chart 12: Insufficient title/upvote data")
 
 print("ALL CHARTS READY IN /charts !")
 print("Post title: 'I scraped every single ping on DailyPings.com (3000+ launches) – here's what gets makers excited'")

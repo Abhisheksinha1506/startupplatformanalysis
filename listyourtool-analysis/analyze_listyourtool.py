@@ -18,9 +18,12 @@ def save(fig, name):
 print("Generating 16 spicy AI-tool charts...")
 
 # 1. Monthly explosion
-df = con.execute("SELECT month, COUNT(*) as tools FROM tools GROUP BY month ORDER BY month").df()
-fig = px.bar(df, x='month', y='tools', title="Monthly AI Tool Submissions on ListYourTool.com")
-save(fig, "01_monthly_explosion")
+df = con.execute("SELECT month, COUNT(*) as tools FROM tools WHERE month IS NOT NULL AND month != '' GROUP BY month ORDER BY month").df()
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='month', y='tools', title="Monthly AI Tool Submissions on ListYourTool.com")
+    save(fig, "01_monthly_explosion")
+else:
+    print("Skipping chart 01: No month data available")
 
 # 2. Top 20 most upvoted AI tools ever
 df = con.execute("SELECT title, maker, upvotes FROM tools WHERE upvotes > 0 ORDER BY upvotes DESC LIMIT 20").df()
@@ -34,15 +37,21 @@ else:
     print("Skipping chart 02: No upvote data available")
 
 # 3. Most saturated categories
-df = con.execute("SELECT category, COUNT(*) as count FROM tools GROUP BY category ORDER BY count DESC LIMIT 20").df()
-fig = px.bar(df, x='category', y='count', title="Most Oversaturated AI Tool Categories")
-fig.update_xaxes(tickangle=45)
-save(fig, "03_saturated_categories")
+df = con.execute("SELECT category, COUNT(*) as count FROM tools WHERE category IS NOT NULL AND category != '' GROUP BY category ORDER BY count DESC LIMIT 20").df()
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='category', y='count', title="Most Oversaturated AI Tool Categories")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "03_saturated_categories")
+else:
+    print("Skipping chart 03: No category data available")
 
 # 4. Pricing reality check
-df = con.execute("SELECT pricing, COUNT(*) as count FROM tools GROUP BY pricing ORDER BY count DESC").df()
-fig = px.pie(df, names='pricing', values='count', title="Pricing of 8,000+ AI Tools (Reality in 2025)")
-save(fig, "04_pricing_pie")
+df = con.execute("SELECT pricing, COUNT(*) as count FROM tools WHERE pricing IS NOT NULL AND pricing != '' GROUP BY pricing ORDER BY count DESC").df()
+if not df.empty and len(df) > 0:
+    fig = px.pie(df, names='pricing', values='count', title="Pricing of 8,000+ AI Tools (Reality in 2025)")
+    save(fig, "04_pricing_pie")
+else:
+    print("Skipping chart 04: No pricing data available")
 
 # 5. Magic words in winning titles
 df = con.execute("""
@@ -99,9 +108,12 @@ HAVING COUNT(*) >= 2
 ORDER BY tool_count DESC
 LIMIT 20
 """).df()
-fig = px.bar(df, x='maker', y='tool_count', title="Top 20 Makers by Number of Tools Submitted")
-fig.update_xaxes(tickangle=45)
-save(fig, "07_maker_repeat_offenders")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='maker', y='tool_count', title="Top 20 Makers by Number of Tools Submitted")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "07_maker_repeat_offenders")
+else:
+    print("Skipping chart 07: No maker data available")
 
 # 8. "ChatGPT" in name correlation - show distribution instead
 df = con.execute("""
@@ -150,8 +162,11 @@ ORDER BY
         ELSE 7
     END
 """).df()
-fig = px.bar(df, x='upvote_range', y='count', title="Distribution of Upvotes Across All AI Tools")
-save(fig, "09_upvote_distribution")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='upvote_range', y='count', title="Distribution of Upvotes Across All AI Tools")
+    save(fig, "09_upvote_distribution")
+else:
+    print("Skipping chart 09: No upvote data available")
 
 # 10. Title length vs upvotes
 df = con.execute("""
@@ -160,13 +175,16 @@ SELECT
     AVG(upvotes) as avg_upvotes,
     COUNT(*) as count
 FROM tools
+WHERE title != '' AND upvotes > 0
 GROUP BY 1
 HAVING COUNT(*) >= 5
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     fig = px.scatter(df, x='title_length', y='avg_upvotes', size='count', title="Title Length vs Average Upvotes", trendline="ols")
     save(fig, "10_title_length_vs_upvotes")
+else:
+    print("Skipping chart 10: Insufficient title/upvote data")
 
 # 11. Tagline length vs engagement
 df = con.execute("""
@@ -188,39 +206,56 @@ if not df.empty:
 df = con.execute("""
 SELECT month, AVG(upvotes) as avg_upvotes, COUNT(*) as count
 FROM tools
+WHERE month IS NOT NULL AND month != ''
 GROUP BY month
 ORDER BY month
 """).df()
-fig = px.line(df, x='month', y='avg_upvotes', title="Monthly Average Upvotes Trend (Are Tools Getting Less Attention?)")
-save(fig, "12_monthly_avg_upvotes")
+if not df.empty and len(df) > 0:
+    fig = px.line(df, x='month', y='avg_upvotes', title="Monthly Average Upvotes Trend (Are Tools Getting Less Attention?)")
+    save(fig, "12_monthly_avg_upvotes")
+else:
+    print("Skipping chart 12: No month data available")
 
 # 13. Top makers by total upvotes
 df = con.execute("""
 SELECT maker, SUM(upvotes) as total_upvotes, COUNT(*) as tool_count
 FROM tools
-WHERE maker != 'unknown'
+WHERE maker != 'unknown' AND upvotes > 0
 GROUP BY maker
 HAVING COUNT(*) >= 2
 ORDER BY total_upvotes DESC
 LIMIT 20
 """).df()
-fig = px.bar(df, x='maker', y='total_upvotes', title="Top 20 Makers by Total Upvotes Across All Tools")
-fig.update_xaxes(tickangle=45)
-save(fig, "13_top_makers_by_upvotes")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='maker', y='total_upvotes', title="Top 20 Makers by Total Upvotes Across All Tools")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "13_top_makers_by_upvotes")
+else:
+    print("Skipping chart 13: No maker/upvote data available")
 
 # 14. Category saturation over time
 df = con.execute("""
 SELECT month, category, COUNT(*) as count
 FROM tools
-WHERE category != 'Unknown'
+WHERE category != 'Unknown' AND month IS NOT NULL AND month != ''
 GROUP BY month, category
 ORDER BY month, count DESC
 """).df()
-# Get top 5 categories overall
-top_cats = con.execute("SELECT category, COUNT(*) as cnt FROM tools WHERE category != 'Unknown' GROUP BY category ORDER BY cnt DESC LIMIT 5").df()['category'].tolist()
-df_filtered = df[df['category'].isin(top_cats)]
-fig = px.line(df_filtered, x='month', y='count', color='category', title="Top 5 Categories: Monthly Submission Trends")
-save(fig, "14_category_trends")
+if not df.empty and len(df) > 0:
+    # Get top 5 categories overall
+    top_cats_df = con.execute("SELECT category, COUNT(*) as cnt FROM tools WHERE category != 'Unknown' GROUP BY category ORDER BY cnt DESC LIMIT 5").df()
+    if not top_cats_df.empty:
+        top_cats = top_cats_df['category'].tolist()
+        df_filtered = df[df['category'].isin(top_cats)]
+        if not df_filtered.empty:
+            fig = px.line(df_filtered, x='month', y='count', color='category', title="Top 5 Categories: Monthly Submission Trends")
+            save(fig, "14_category_trends")
+        else:
+            print("Skipping chart 14: No category trend data available")
+    else:
+        print("Skipping chart 14: No category data available")
+else:
+    print("Skipping chart 14: No month/category data available")
 
 # 15. Pricing distribution (show what pricing models exist)
 df = con.execute("""

@@ -18,16 +18,22 @@ def save(fig, name):
 print("Generating 20 nuclear-level charts...")
 
 # 1. The brutal waitlist reality
-df = con.execute("SELECT waitlist FROM bl").df()
-fig = px.histogram(df, x='waitlist', nbins=100, title="99.6% of BetaList startups get <1,000 signups")
-fig.update_xaxes(range=[0, 5000])
-save(fig, "01_brutal_reality")
+df = con.execute("SELECT waitlist FROM bl WHERE waitlist > 0").df()
+if not df.empty and len(df) > 0:
+    fig = px.histogram(df, x='waitlist', nbins=100, title="99.6% of BetaList startups get <1,000 signups")
+    fig.update_xaxes(range=[0, 5000])
+    save(fig, "01_brutal_reality")
+else:
+    print("Skipping chart 01: No waitlist data available")
 
 # 2. Top 25 biggest waitlists ever
-df = con.execute("SELECT title, founder, waitlist, date FROM bl ORDER BY waitlist DESC LIMIT 25").df()
-fig = px.bar(df, y='title', x='waitlist', orientation='h', title="Biggest BetaList Waitlists Ever")
-fig.update_yaxes(autorange="reversed")
-save(fig, "02_hall_of_fame")
+df = con.execute("SELECT title, founder, waitlist, date FROM bl WHERE waitlist > 0 ORDER BY waitlist DESC LIMIT 25").df()
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, y='title', x='waitlist', orientation='h', title="Biggest BetaList Waitlists Ever")
+    fig.update_yaxes(autorange="reversed")
+    save(fig, "02_hall_of_fame")
+else:
+    print("Skipping chart 02: No waitlist data available")
 
 # 3. Category dominance over time
 df = con.execute("""
@@ -36,25 +42,37 @@ SELECT TRY_CAST(date AS DATE)::VARCHAR(7) as month,
 FROM bl, UNNEST(categories) as cat
 WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
 """).df()
-df = df.groupby(['month','cat']).size().reset_index(name='count')
-top_cats = df.groupby('cat')['count'].sum().sort_values(ascending=False).head(10).index
-df = df[df['cat'].isin(top_cats)]
-fig = px.area(df, x='month', y='count', color='cat', title="AI overtook everything in 2025")
-save(fig, "03_category_shift")
+if not df.empty and len(df) > 0:
+    df = df.groupby(['month','cat']).size().reset_index(name='count')
+    if not df.empty:
+        top_cats = df.groupby('cat')['count'].sum().sort_values(ascending=False).head(10).index
+        df = df[df['cat'].isin(top_cats)]
+        if not df.empty:
+            fig = px.area(df, x='month', y='count', color='cat', title="AI overtook everything in 2025")
+            save(fig, "03_category_shift")
+        else:
+            print("Skipping chart 03: No category data available")
+    else:
+        print("Skipping chart 03: No category data available")
+else:
+    print("Skipping chart 03: No date/category data available")
 
 # 4. Magic title words (12-year data!)
 df = con.execute("""
 WITH words AS (
   SELECT UNNEST(regexp_split_to_array(LOWER(title), '\\W+')) as word, waitlist
-  FROM bl WHERE waitlist > 100
+  FROM bl WHERE waitlist > 0
 )
 SELECT word, COUNT(*) as n, AVG(waitlist) as avg
 FROM words WHERE LENGTH(word)>4 AND word NOT IN ('with','your','from','just','into')
 GROUP BY word HAVING COUNT(*)>=15
 ORDER BY avg DESC LIMIT 30
 """).df()
-fig = px.bar(df, x='word', y='avg', title="Title Words That 20× Your Waitlist")
-save(fig, "04_magic_words")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='word', y='avg', title="Title Words That 20× Your Waitlist")
+    save(fig, "04_magic_words")
+else:
+    print("Skipping chart 04: Insufficient word data")
 
 # 5. Founder repeat success rate
 df = con.execute("""
@@ -70,9 +88,12 @@ HAVING COUNT(*) >= 2
 ORDER BY avg_waitlist DESC 
 LIMIT 20
 """).df()
-fig = px.bar(df, x='founder', y='avg_waitlist', title="Founders Who Launched Multiple Startups (Avg Waitlist)")
-fig.update_xaxes(tickangle=45)
-save(fig, "05_founder_repeat_success")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='founder', y='avg_waitlist', title="Founders Who Launched Multiple Startups (Avg Waitlist)")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "05_founder_repeat_success")
+else:
+    print("Skipping chart 05: No founder data available")
 
 # 6. Best launch month analysis
 df = con.execute("""
@@ -81,15 +102,17 @@ SELECT
     COUNT(*) as launches,
     AVG(waitlist) as avg_waitlist
 FROM bl 
-WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
+WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL AND waitlist > 0
 GROUP BY 1 
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     df['month_name'] = df['month'].apply(lambda x: month_names[int(x)-1] if 1 <= x <= 12 else 'Unknown')
     fig = px.bar(df, x='month_name', y='avg_waitlist', title="Best Month to Launch (Avg Waitlist by Month)")
     save(fig, "06_best_launch_month")
+else:
+    print("Skipping chart 06: Insufficient date/waitlist data")
 
 # 7. "AI" category explosion timeline
 df = con.execute("""
@@ -102,10 +125,12 @@ WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
 GROUP BY 1 
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     df['ai_percentage'] = (df['ai_count'] / df['total_count'] * 100).round(2)
     fig = px.line(df, x='month', y='ai_percentage', title="AI Category Explosion Over Time (% of All Launches)")
     save(fig, "07_ai_explosion")
+else:
+    print("Skipping chart 07: No date data available")
 
 # 8. Startup death rate over time (low waitlist = likely dead)
 df = con.execute("""
@@ -118,10 +143,12 @@ WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
 GROUP BY 1 
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     df['death_rate'] = (df['low_waitlist'] / df['total'] * 100).round(2)
     fig = px.line(df, x='month', y='death_rate', title="Startup 'Death Rate' Over Time (% with <50 Waitlist)")
     save(fig, "08_death_rate")
+else:
+    print("Skipping chart 08: No date data available")
 
 # 9. Waitlist growth trends (average waitlist over time)
 df = con.execute("""
@@ -130,13 +157,15 @@ SELECT
     AVG(waitlist) as avg_waitlist,
     COUNT(*) as launches
 FROM bl 
-WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
+WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL AND waitlist > 0
 GROUP BY 1 
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     fig = px.line(df, x='month', y='avg_waitlist', title="Average Waitlist Size Over Time")
     save(fig, "09_waitlist_trends")
+else:
+    print("Skipping chart 09: Insufficient date/waitlist data")
 
 # 10. Category performance comparison
 df = con.execute("""
@@ -167,15 +196,17 @@ SELECT
     AVG(waitlist) as avg_waitlist,
     COUNT(*) as count
 FROM bl 
-WHERE tagline != '' AND LENGTH(tagline) > 0
+WHERE tagline != '' AND LENGTH(tagline) > 0 AND waitlist > 0
 GROUP BY 1 
 HAVING COUNT(*) >= 10
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     fig = px.scatter(df, x='tagline_length', y='avg_waitlist', size='count', 
                      title="Tagline Length vs Average Waitlist", trendline="ols")
     save(fig, "11_tagline_length")
+else:
+    print("Skipping chart 11: Insufficient tagline/waitlist data")
 
 # 12. Launch year distribution
 df = con.execute("""
@@ -187,9 +218,11 @@ WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
 GROUP BY 1 
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     fig = px.bar(df, x='year', y='launches', title="Startups Launched Per Year (2013-2025)")
     save(fig, "12_launch_year_distribution")
+else:
+    print("Skipping chart 12: No date data available")
 
 # 13. Waitlist percentile analysis
 df = con.execute("""
@@ -222,8 +255,11 @@ ORDER BY
         ELSE 9
     END
 """).df()
-fig = px.bar(df, x='waitlist_range', y='percentage', title="Waitlist Distribution (% of All Startups)")
-save(fig, "13_waitlist_percentiles")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='waitlist_range', y='percentage', title="Waitlist Distribution (% of All Startups)")
+    save(fig, "13_waitlist_percentiles")
+else:
+    print("Skipping chart 13: No waitlist data available")
 
 # 14. Category waitlist averages (top vs bottom)
 df = con.execute("""
@@ -255,14 +291,17 @@ SELECT
     SUM(waitlist) as total_waitlist,
     AVG(waitlist) as avg_waitlist
 FROM bl 
-WHERE founder != 'unknown'
+WHERE founder != 'unknown' AND waitlist > 0
 GROUP BY founder 
 ORDER BY total_waitlist DESC 
 LIMIT 20
 """).df()
-fig = px.bar(df, x='founder', y='total_waitlist', title="Top 20 Founders by Total Waitlist Size")
-fig.update_xaxes(tickangle=45)
-save(fig, "15_top_founders")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='founder', y='total_waitlist', title="Top 20 Founders by Total Waitlist Size")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "15_top_founders")
+else:
+    print("Skipping chart 15: No founder/waitlist data available")
 
 # 16. Startup survival rate by category (waitlist > 100 = "survived")
 df = con.execute("""
@@ -278,9 +317,12 @@ HAVING COUNT(*) >= 50
 ORDER BY survival_rate DESC 
 LIMIT 15
 """).df()
-fig = px.bar(df, x='category', y='survival_rate', title="Startup Survival Rate by Category (% with 100+ Waitlist)")
-fig.update_xaxes(tickangle=45)
-save(fig, "16_survival_by_category")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='category', y='survival_rate', title="Startup Survival Rate by Category (% with 100+ Waitlist)")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "16_survival_by_category")
+else:
+    print("Skipping chart 16: Insufficient category/waitlist data")
 
 # 17. Waitlist vs time since launch
 df = con.execute("""
@@ -289,15 +331,17 @@ SELECT
     AVG(waitlist) as avg_waitlist,
     COUNT(*) as count
 FROM bl 
-WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
+WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL AND waitlist > 0
 GROUP BY 1 
 HAVING COUNT(*) >= 20
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     fig = px.line(df, x='years_since_launch', y='avg_waitlist', 
                   title="Average Waitlist vs Years Since Launch")
     save(fig, "17_waitlist_vs_age")
+else:
+    print("Skipping chart 17: Insufficient date/waitlist data")
 
 # 18. Most common tagline words
 df = con.execute("""
@@ -313,9 +357,12 @@ HAVING COUNT(*) >= 20
 ORDER BY frequency DESC 
 LIMIT 25
 """).df()
-fig = px.bar(df, x='word', y='frequency', title="Most Common Tagline Words")
-fig.update_xaxes(tickangle=45)
-save(fig, "18_common_tagline_words")
+if not df.empty and len(df) > 0:
+    fig = px.bar(df, x='word', y='frequency', title="Most Common Tagline Words")
+    fig.update_xaxes(tickangle=45)
+    save(fig, "18_common_tagline_words")
+else:
+    print("Skipping chart 18: Insufficient tagline word data")
 
 # 19. Title length vs waitlist
 df = con.execute("""
@@ -324,15 +371,17 @@ SELECT
     AVG(waitlist) as avg_waitlist,
     COUNT(*) as count
 FROM bl 
-WHERE title != '' AND LENGTH(title) > 0
+WHERE title != '' AND LENGTH(title) > 0 AND waitlist > 0
 GROUP BY 1 
 HAVING COUNT(*) >= 10
 ORDER BY 1
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     fig = px.scatter(df, x='title_length', y='avg_waitlist', size='count',
                      title="Title Length vs Average Waitlist", trendline="ols")
     save(fig, "19_title_length")
+else:
+    print("Skipping chart 19: Insufficient title/waitlist data")
 
 # 20. Category trends (top 5 categories over time)
 df = con.execute("""
@@ -342,13 +391,21 @@ SELECT
 FROM bl, UNNEST(categories) as cat
 WHERE date != '' AND TRY_CAST(date AS DATE) IS NOT NULL
 """).df()
-if not df.empty:
+if not df.empty and len(df) > 0:
     top_cats = df.groupby('category').size().sort_values(ascending=False).head(5).index
     df_filtered = df[df['category'].isin(top_cats)]
-    df_counts = df_filtered.groupby(['month', 'category']).size().reset_index(name='count')
-    fig = px.line(df_counts, x='month', y='count', color='category',
-                  title="Top 5 Categories Over Time (Launch Count)")
-    save(fig, "20_category_trends")
+    if not df_filtered.empty:
+        df_counts = df_filtered.groupby(['month', 'category']).size().reset_index(name='count')
+        if not df_counts.empty:
+            fig = px.line(df_counts, x='month', y='count', color='category',
+                          title="Top 5 Categories Over Time (Launch Count)")
+            save(fig, "20_category_trends")
+        else:
+            print("Skipping chart 20: Insufficient category trend data")
+    else:
+        print("Skipping chart 20: No category data available")
+else:
+    print("Skipping chart 20: No date/category data available")
 
 print("ALL 20 CHARTS SAVED!")
 print("Your post title:")
